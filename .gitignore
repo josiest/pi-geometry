@@ -1,0 +1,4 @@
+cmake-build-*/
+.idea/*
+*.sw[op]
+install_message.bat

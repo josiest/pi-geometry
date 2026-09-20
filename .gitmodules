@@ -1,0 +1,3 @@
+[submodule "pi-cmake-library-helpers"]
+	path = pi-cmake-library-helpers
+	url = git@github.com:josiest/pi-cmake-library-helpers.git
