@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 4.4)
-project(pi-affine-transforms VERSION 0.1.0)
+project(pi-geometry VERSION 0.1.0)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_library(pi-affine-transforms INTERFACE)
-target_sources(pi-affine-transforms
+add_library(pi-geometry INTERFACE)
+target_sources(pi-geometry
     INTERFACE FILE_SET HEADERS
     BASE_DIRS include
     FILES
@@ -14,9 +14,11 @@ target_sources(pi-affine-transforms
         include/pi/geometry/linear_algebra.hpp
         include/pi/geometry.hpp)
 
-set_target_properties(pi-affine-transforms PROPERTIES
+target_compile_options(pi-geometry INTERFACE -lstdc++exp)
+
+set_target_properties(pi-geometry PROPERTIES
     SOVERSION 0
-    EXPORT_NAME affine-transforms)
+    EXPORT_NAME geometry)
 
 include(pi-cmake-library-helpers/PiLibraryHelpers.cmake)
-install_pi_package(affine-transforms)
+install_pi_package(geometry)

@@ -17,15 +17,15 @@ namespace pi
 {
 namespace affine2d_index
 {
-static constexpr std::uint8_t dim = 2;
-static constexpr std::uint8_t num_cols = 3;
-static constexpr std::uint8_t num_rows = 3;
+static constexpr std::size_t dim = 2;
+static constexpr std::size_t num_cols = 3;
+static constexpr std::size_t num_rows = 3;
 
-static constexpr std::uint8_t x_index = 0;
-static constexpr std::uint8_t y_index = 1;
+static constexpr std::size_t x_index = 0;
+static constexpr std::size_t y_index = 1;
 
-static constexpr std::uint8_t x_component = dim + x_index*num_cols;
-static constexpr std::uint8_t y_component = dim + y_index*num_cols;
+static constexpr std::size_t x_component = dim + x_index*num_cols;
+static constexpr std::size_t y_component = dim + y_index*num_cols;
 
 inline static const std::slice position_component{ x_component, dim, num_cols };
 inline static const std::gslice linear_component{ 0, { dim, dim }, { 1, num_cols } };
@@ -41,7 +41,7 @@ public:
     // Constructors
     /** Construct an affine2 identity transform */
     affine_transform2()
-        : basis{ identity_matrix<Field, 3>() }
+        : basis{ identity_matrix<Field, 3>()}
     {
     }
 
@@ -50,7 +50,7 @@ public:
     requires std::same_as<std::ranges::range_value_t<MatrixInput>, Field>
     explicit affine_transform2(MatrixInput && input)
     {
-        static constexpr std::uint8_t num_values = num_rows_v<mat3x3> * num_cols_v<mat3x3>;
+        static constexpr std::size_t num_values = num_rows_v<mat3x3> * num_cols_v<mat3x3>;
         std::ranges::copy_n(std::ranges::begin(input), std::min(num_values, std::ranges::size(input)),
                             std::begin(basis.data));
 
@@ -252,7 +252,7 @@ public:
     template<euclidean_vector2 Vector> requires std::same_as<scalar_field_t<Vector>, Field>
     Vector operator*(const Vector & p) const
     {
-        basic_vector<Field, 3> q{ .data{ p.x, p.y, Field(1) } };
+        basic_vector<Field, 3> q{ p.x, p.y, Field(1) };
         for (const auto * current = this; current != nullptr; current = current->parent)
         {
             q = matvec_product(current->basis, q);

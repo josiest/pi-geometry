@@ -1,6 +1,5 @@
 #pragma once
 #include <concepts>
-#include <numeric>
 
 namespace pi
 {
@@ -21,8 +20,8 @@ concept euclidean_vector3 = requires(Vector v)
 {
     Vector{};
     { v.x } -> numeric;
-    { v.y } -> std::same_as<decltype(std::declval<Vector>().x)>;
-    { v.z } -> std::same_as<decltype(std::declval<Vector>().x)>;
+    { v.y } -> std::same_as<std::add_lvalue_reference_t<decltype(std::declval<Vector>().x)>>;
+    { v.z } -> std::same_as<std::add_lvalue_reference_t<decltype(std::declval<Vector>().x)>>;
     Vector{ v.x, v.y, v.z };
 };
 
@@ -31,9 +30,9 @@ concept euclidean_vector4 = requires(Vector v)
 {
     Vector{};
     { v.x } -> numeric;
-    { v.y } -> std::same_as<decltype(std::declval<Vector>().x)>;
-    { v.z } -> std::same_as<decltype(std::declval<Vector>().x)>;
-    { v.w } -> std::same_as<decltype(std::declval<Vector>().x)>;
+    { v.y } -> std::same_as<std::add_lvalue_reference_t<decltype(std::declval<Vector>().x)>>;
+    { v.z } -> std::same_as<std::add_lvalue_reference_t<decltype(std::declval<Vector>().x)>>;
+    { v.w } -> std::same_as<std::add_lvalue_reference_t<decltype(std::declval<Vector>().x)>>;
     Vector{ v.x, v.y, v.z, v.w };
 };
 
@@ -45,8 +44,8 @@ concept color_vector3 = requires(Vector v)
 {
     Vector{};
     { v.r } -> numeric;
-    { v.g } -> std::same_as<decltype(std::declval<Vector>().r)>;
-    { v.b } -> std::same_as<decltype(std::declval<Vector>().r)>;
+    { v.g } -> std::same_as<std::add_lvalue_reference_t<decltype(std::declval<Vector>().r)>>;
+    { v.b } -> std::same_as<std::add_lvalue_reference_t<decltype(std::declval<Vector>().r)>>;
     Vector{ v.r, v.g, v.b };
 };
 
@@ -55,9 +54,9 @@ concept color_vector4 = requires(Vector v)
 {
     Vector{};
     { v.r } -> numeric;
-    { v.g } -> std::same_as<decltype(std::declval<Vector>().r)>;
-    { v.b } -> std::same_as<decltype(std::declval<Vector>().r)>;
-    { v.a } -> std::same_as<decltype(std::declval<Vector>().r)>;
+    { v.g } -> std::same_as<std::add_lvalue_reference_t<decltype(std::declval<Vector>().r)>>;
+    { v.b } -> std::same_as<std::add_lvalue_reference_t<decltype(std::declval<Vector>().r)>>;
+    { v.a } -> std::same_as<std::add_lvalue_reference_t<decltype(std::declval<Vector>().r)>>;
     Vector{ v.r, v.g, v.b, v.a };
 };
 
