@@ -21,7 +21,7 @@ struct basic_vector
     basic_vector(std::initializer_list<Field> values)
         : data(Dim)
     {
-        std::ranges::copy_n(values.begin(), std::min(static_cast<std::size_t>(Dim), values.size()),
+        std::ranges::copy_n(std::begin(values), std::min(static_cast<std::size_t>(Dim), values.size()),
                             std::begin(data));
     }
 
@@ -32,11 +32,11 @@ struct basic_vector
                             std::begin(data));
     }
 
-    auto constexpr begin() { return data.begin(); }
-    auto constexpr begin() const { return data.begin(); }
+    auto constexpr begin() { return std::begin(data); }
+    auto constexpr begin() const { return std::begin(data); }
 
-    auto constexpr end() { return data.end(); }
-    auto constexpr end() const { return data.end(); }
+    auto constexpr end() { return std::begin(data); }
+    auto constexpr end() const { return std::end(data); }
 
     Field x() const { return data[0]; }
 
@@ -77,6 +77,13 @@ struct scalar_field<Vector>
 template<valarray_vector Vector>
 constexpr std::size_t vector_dim = Vector::dim;
 
+template<valarray_vector Vector>
+scalar_field_t<Vector> vector_magnitude(const Vector & v)
+{
+    return std::sqrt(std::inner_product(std::begin(v.data), std::end(v.data),
+                                        std::begin(v.data), scalar_field_t<Vector>(0)));
+}
+
 template<numeric Field, std::size_t NumRows, std::size_t NumCols>
 struct basic_matrix
 {
@@ -89,16 +96,6 @@ struct basic_matrix
 };
 
 using mat3x3 = basic_matrix<float, 3, 3>;
-
-template<std::floating_point Field>
-basic_matrix<Field, 2, 2> rotation_matrix(Field angle)
-{
-    return basic_matrix<Field, 2, 2>
-    {
-        .data { std::cos(angle), -std::sin(angle),
-                std::sin(angle),  std::cos(angle) }
-    };
-}
 
 template<class Matrix>
 concept valarray_matrix = requires(Matrix m)
@@ -146,6 +143,30 @@ basic_matrix<Field, Dim, Dim> identity_matrix()
     return identity;
 }
 
+template<std::floating_point Field>
+basic_matrix<Field, 2, 2> rotation_matrix(Field angle)
+{
+    return basic_matrix<Field, 2, 2>
+    {
+        .data { std::cos(angle), -std::sin(angle),
+                std::sin(angle),  std::cos(angle) }
+    };
+}
+
+template<valarray_matrix Matrix>
+basic_matrix<scalar_field_t<Matrix>, num_cols_v<Matrix>, num_rows_v<Matrix>>
+transpose(const Matrix & A)
+{
+    basic_matrix<scalar_field_t<Matrix>, num_cols_v<Matrix>, num_rows_v<Matrix>> transposed;
+    for (int i = 0; i < num_rows_v<Matrix>; ++i)
+    {
+        const std::slice row_slice(i*num_cols_v<Matrix>, num_cols_v<Matrix>, 1);
+        const std::slice transposed_col_slice(i, num_cols_v<Matrix>, num_rows_v<Matrix>);
+        transposed.data[transposed_col_slice] = A.data[row_slice];
+    }
+    return transposed;
+}
+
 template<valarray_matrix Matrix, valarray_vector Vector>
 requires std::same_as<scalar_field_t<Matrix>, scalar_field_t<Vector>>
      and (vector_dim<Vector> == num_cols_v<Matrix>)
@@ -181,6 +202,116 @@ matrix_product(const MatrixA & A, const MatrixB & B)
         product.data[col_component_AB] = matvec_product(A, column_vector(B.data[col_component_B])).data;
     }
     return product;
+}
+
+template<valarray_matrix Matrix>
+void backsub(Matrix & A)
+{
+    using Field = scalar_field_t<Matrix>;
+    constexpr std::size_t num_cols = num_rows_v<Matrix>;
+    constexpr std::size_t num_rows = num_rows_v<Matrix>;
+    constexpr std::size_t num_augmented_cols = num_cols_v<Matrix>;
+
+    for (int pivot = num_rows-1; pivot >= 0; --pivot)
+    {
+        const int pivot_index = pivot + pivot*num_augmented_cols;
+        const std::slice pivot_row_component( num_cols + pivot*num_augmented_cols, num_augmented_cols-num_cols, 1 );
+        A.data[pivot_row_component] /= std::valarray(A.data[pivot_index], num_augmented_cols-num_cols);
+        A.data[pivot_index] = Field(1);
+        const std::valarray pivot_row = A.data[pivot_row_component];
+
+        for (int row_index = pivot-1; row_index >= 0; --row_index)
+        {
+            const int index_above_pivot = pivot + row_index*num_augmented_cols;
+            const std::slice current_row(num_cols + row_index*num_augmented_cols, num_augmented_cols-num_cols, 1);
+
+            A.data[current_row] -= pivot_row * A.data[index_above_pivot];
+            A.data[index_above_pivot] = Field(0);
+        }
+    }
+}
+
+template<valarray_matrix Matrix>
+bool is_upper_triangular(const Matrix & A)
+{
+    static constexpr float SENSITIVITY_EPSILON = 0.001f;
+    for (int row = 1; row < num_rows_v<Matrix>; ++row)
+    {
+        for (int col = 0; col < row; ++col)
+        {
+            if (std::abs(A.data[col + row*num_cols_v<Matrix>]) > SENSITIVITY_EPSILON)
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+template<valarray_vector Vector>
+Vector householder_vector(const Vector & v)
+{
+    Vector reflector = v;
+    for (auto & x : reflector.data) { x = -x; }
+    reflector.data[0] -= std::copysign(1.f, v.x()) * vector_magnitude(v);
+    reflector.data /= std::valarray(vector_magnitude(reflector), vector_dim<Vector>);
+    return reflector;
+}
+
+template<valarray_matrix Matrix>
+std::pair<basic_matrix<scalar_field_t<Matrix>, num_rows_v<Matrix>, num_rows_v<Matrix>>, Matrix>
+hh_qr(const Matrix & A)
+{
+    auto Q = identity_matrix<scalar_field_t<Matrix>, num_rows_v<Matrix>>();
+    auto R = A;
+    template for (constexpr std::size_t k : std::views::iota(0uz, num_cols_v<Matrix>))
+    {
+        using Vector = basic_vector<scalar_field_t<Matrix>, num_rows_v<Matrix>-k>;
+        const std::slice householder_column(k, num_rows_v<Matrix>-k, num_cols_v<Matrix>);
+        auto v = householder_vector(Vector{ A.data[householder_column] });
+    }
+    // for (int k = 0; k < num_cols_v<Matrix>; ++k)
+    // {
+    //     const std::slice householder_column(k, num_rows_v<Matrix>-k, num_cols_v<Matrix>);
+    //     auto v = householder_vector(A.data[householder_column]);
+    // }
+    return std::make_pair(Q, R);
+}
+
+template<valarray_matrix Matrix, valarray_vector Vector>
+requires (num_rows_v<Matrix> == vector_dim<Vector>) and std::same_as<scalar_field_t<Matrix>, scalar_field_t<Vector>>
+basic_vector<scalar_field_t<Matrix>, num_cols_v<Matrix>>
+linear_solve(const Matrix & A, const Vector & b)
+{
+    using Field = scalar_field_t<Matrix>;
+    using OutVector = basic_vector<Field, num_cols_v<Matrix>>;
+
+    constexpr std::size_t num_augmented_cols = num_cols_v<Matrix> + 1;
+    using AugmentedMatrix = basic_matrix<Field, num_rows_v<Matrix>, num_augmented_cols>;
+
+    AugmentedMatrix augmented;
+
+    const std::gslice original_component(0, { num_rows_v<Matrix>, num_cols_v<Matrix> },
+                                            { num_augmented_cols, 1 });
+    const std::slice inverse_component(num_cols_v<Matrix>, num_rows_v<Matrix>, num_augmented_cols);
+
+    augmented.data[original_component] = A.data;
+    augmented.data[inverse_component] = b.data;
+
+    if (is_upper_triangular(augmented))
+    {
+        backsub(augmented);
+        return OutVector{ augmented.data[inverse_component] };
+    }
+    else
+    {
+        auto [Q, R] = hh_qr(augmented);
+        AugmentedMatrix augmented_R;
+        augmented_R.data[original_component] = R.data;
+        augmented_R.data[inverse_component] = matvec_product(transpose(Q), b).data;
+        backsub(augmented_R);
+        return matvec_product(Q, OutVector{ augmented_R.data[inverse_component] });
+    }
 }
 }
 
