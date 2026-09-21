@@ -28,7 +28,7 @@ static constexpr std::size_t x_component = dim + x_index*num_cols;
 static constexpr std::size_t y_component = dim + y_index*num_cols;
 
 inline static const std::slice position_component{ x_component, dim, num_cols };
-inline static const std::gslice linear_component{ 0, { dim, dim }, { 1, num_cols } };
+inline static const std::gslice linear_component{ 0, { dim, dim }, { num_cols, 1 } };
 
 inline static const std::slice x_row{ x_index * num_cols, dim, 1 };
 inline static const std::slice y_row{ y_index * num_cols, dim, 1 };
@@ -53,7 +53,7 @@ public:
     requires std::same_as<std::ranges::range_value_t<MatrixInput>, Field>
     explicit affine_transform2(MatrixInput && input)
     {
-        static constexpr std::size_t num_values = num_rows_v<mat3x3> * num_cols_v<mat3x3>;
+        static constexpr std::size_t num_values = num_rows_v<mat3x3f> * num_cols_v<mat3x3f>;
         std::ranges::copy_n(std::ranges::begin(input), std::min(num_values, std::ranges::size(input)),
                             std::begin(basis_.data));
 
@@ -337,14 +337,17 @@ public:
     Vector inverse(const Vector & v) const
     {
         std::list transforms{ this };
-        basic_vector<Field, affine2d_index::num_rows> inverse_point{ v.x, v.y, Field(1) };
         for (const auto * current = this->parent; current != nullptr; current = current->parent)
         {
             transforms.push_front(current);
         }
+
+        basic_vector<Field, affine2d_index::dim> inverse_point{ v.x, v.y };
         for (const auto * transform : transforms)
         {
-            inverse_point = linear_solve(transform->basis_, inverse_point);
+            mat2x2<Field> linear_basis(transform->basis_.data[affine2d_index::linear_component]);
+            inverse_point.data -= transform->basis_.data[affine2d_index::position_component];
+            inverse_point = linear_solve(linear_basis, inverse_point);
         }
         return Vector{ inverse_point.x(), inverse_point.y() };
     }
@@ -361,7 +364,12 @@ public:
 private:
     void update_transform_fields()
     {
-        // TODO: use SVD to find rotation, scale and shear
+        // TODO: use SVD to find rotation, scale and shear?
+        const float a = basis_.data[0]; const float b = basis_.data[1];
+        const float c = basis_.data[3]; const float d = basis_.data[4];
+        x_scale_ = std::sqrt(a*a + c*c);
+        y_scale_ = std::sqrt(b*b + d*d);
+        rotation_angle = std::atan2(c, d);
     }
     void update_linear_transform()
     {
@@ -383,7 +391,7 @@ private:
     Field x_shear_ = Field(0);
     Field y_shear_ = Field(0);
     Field rotation_angle = Field(0);
-    mat3x3 basis_;
+    mat3x3f basis_;
 };
 
 using transform2f = affine_transform2<float>;
