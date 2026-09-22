@@ -363,28 +363,6 @@ void gauss_elim(Matrix & A)
     }
 }
 
-template<std::floating_point Field>
-void gauss_jordan2x3(mat2x3<Field> & A)
-{
-    {
-        const float a = A.data[0]; const float b = A.data[1]; const float c = A.data[2];
-        const float d = A.data[3];
-        A.data[3] = Field(0); A.data[4] -= b*d/a; A.data[5] -= c*d/a;
-    }
-    {
-        const float e = A.data[4];
-        A.data[4] = Field(1); A.data[5] /= e;
-    }
-    {
-        const float b = A.data[1]; const float f = A.data[5];
-        A.data[1] = Field(0); A.data[2] -= b*f;
-    }
-    {
-        const float a = A.data[0];
-        A.data[0] = Field(1); A.data[2] /= a;
-    }
-}
-
 template<valarray_matrix Matrix, valarray_vector Vector>
 requires (num_rows_v<Matrix> == vector_dim<Vector>) and std::same_as<scalar_field_t<Matrix>, scalar_field_t<Vector>>
 basic_vector<scalar_field_t<Matrix>, num_cols_v<Matrix>>

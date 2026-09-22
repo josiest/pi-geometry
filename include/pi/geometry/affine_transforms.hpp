@@ -315,21 +315,16 @@ public:
     Vector operator*(const Vector & p) const
     {
         basic_vector<Field, 3> q{ p.x, p.y, Field(1) };
-        for (const auto * current = this; current != nullptr; current = current->parent)
+        std::list transforms{ this };
+        for (const auto * current = this->parent; current != nullptr; current = current->parent)
         {
-            q = matvec_product(current->basis_, q);
+            transforms.push_front(current);
+        }
+        for (const affine_transform2 * transform : transforms)
+        {
+            q = matvec_product(transform->basis_, q);
         }
         return Vector{ q.x(), q.y() };
-    }
-
-    affine_transform2 operator*(const affine_transform2 & other) const
-    {
-        auto product = other.basis_;
-        for (const auto * current = this; current != nullptr; current = current->parent)
-        {
-            product = matrix_product(current->basis_, product);
-        }
-        return affine_transform2(product);
     }
 
     template<euclidean_vector2 Vector>
@@ -339,7 +334,7 @@ public:
         std::list transforms{ this };
         for (const auto * current = this->parent; current != nullptr; current = current->parent)
         {
-            transforms.push_front(current);
+            transforms.push_back(current);
         }
 
         basic_vector<Field, affine2d_index::dim> inverse_point{ v.x, v.y };
