@@ -334,7 +334,7 @@ public:
         std::list transforms{ this };
         for (const auto * current = this->parent; current != nullptr; current = current->parent)
         {
-            transforms.push_front(current);
+            transforms.push_back(current);
         }
         for (const affine_transform2 * transform : transforms)
         {
