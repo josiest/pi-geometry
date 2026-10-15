@@ -175,7 +175,15 @@ public:
     void translate(const Vector & v) { translate(v.x, v.y); }
 
     /** How much x-coordinates are scaled by */
-    Field x_scale() const { return x_scale_; }
+    Field x_scale() const
+    {
+        float scale = x_scale_;
+        for (const auto * current = parent; current != nullptr; current = current->parent)
+        {
+            scale *= current->x_scale_;
+        }
+        return scale;
+    }
     /** Set the x-scale component */
     void x_scale(std::convertible_to<Field> auto in_x)
     {
@@ -190,7 +198,15 @@ public:
     }
 
     /** How much y-coordinates are scaled by */
-    Field y_scale() const { return y_scale_; }
+    Field y_scale() const
+    {
+        float scale = y_scale_;
+        for (const auto * current = parent; current != nullptr; current = current->parent)
+        {
+            scale *= current->y_scale_;
+        }
+        return scale;
+    }
     /** Set the y-scale component */
     void y_scale(std::convertible_to<Field> auto in_y)
     {
@@ -324,7 +340,14 @@ public:
         {
             q = matvec_product(transform->basis_, q);
         }
-        return Vector{ q.x(), q.y() };
+        if constexpr (rect<Vector>)
+        {
+            return Vector{ q.x(), q.y(), p.w * x_scale(), p.h * y_scale() };
+        }
+        else
+        {
+            return Vector{ q.x(), q.y() };
+        }
     }
 
     template<euclidean_vector2 Vector>
@@ -353,7 +376,7 @@ public:
         cpy.parent = nullptr;
         return cpy;
     }
-    affine_transform2 * parent = nullptr;
+    const affine_transform2 * parent = nullptr;
 
     // Internal Interface
 private:

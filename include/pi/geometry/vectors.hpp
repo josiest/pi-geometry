@@ -63,6 +63,17 @@ concept color_vector4 = requires(Vector v)
 template<typename Vector>
 concept color_vector = color_vector3<Vector> or color_vector4<Vector>;
 
+template<typename Rect>
+concept rect = requires(Rect r)
+{
+    Rect{};
+    { r.x } -> numeric;
+    { r.y } -> std::same_as<std::add_lvalue_reference_t<decltype(std::declval<Rect>().x)>>;
+    { r.w } -> std::same_as<std::add_lvalue_reference_t<decltype(std::declval<Rect>().x)>>;
+    { r.h } -> std::same_as<std::add_lvalue_reference_t<decltype(std::declval<Rect>().x)>>;
+    Rect{ r.x, r.y, r.w, r.h };
+};
+
 template<typename T>
 struct scalar_field
 {

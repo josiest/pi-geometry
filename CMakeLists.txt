@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.4)
-project(pi-geometry VERSION 0.1.0)
+project(pi-geometry VERSION 0.1.1)
 
 add_library(pi-geometry INTERFACE)
 target_sources(pi-geometry
